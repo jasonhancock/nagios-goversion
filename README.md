@@ -1,6 +1,6 @@
 # check\_goversion
 
-A Nagios plugin for ensuring that you're running the latest version of Go.
+A Nagios plugin for ensuring that you're running the latest version of Go inspired by a conversation I saw on Twitter: https://twitter.com/miekg/status/1010589700829188096
 
 ## Usage:
 
