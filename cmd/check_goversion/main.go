@@ -64,8 +64,8 @@ func main() {
 	code := nagios.OK
 	label := "OK"
 	if appVersion != version {
-		code = nagios.CRITICAL
-		label = "CRITICAL"
+		code = nagios.WARNING
+		label = "WARNING"
 	}
 
 	p.Exit(code, fmt.Sprintf("%s - application_version=%q expected_version=%q", label, appVersion, version))
