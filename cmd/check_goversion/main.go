@@ -23,7 +23,7 @@ func main() {
 	p.StringFlag("endpoint", "", "The page to check for your application's Go version. The page must output JSON.")
 	p.StringFlag("endpoint-path", "", "The path to the JSON key containing your application's Go version specified in JavaScript notation")
 	p.StringFlag("version", "latest", "The expected version. If set to `latest`, the latest-version-url will be consulted")
-	p.StringFlag("version-filter", "go1.10", "A prefix filter for the version.  Example `go1.10`")
+	p.StringFlag("latest-version-filter", "go1.10", "A prefix filter for the version.  Example `go1.10`")
 	p.StringFlag("latest-version-url", "https://golang.org/dl/?mode=json", "The url where one can retrieve the latest version of Go")
 	p.StringFlag("tls-client-cert", "", "path to certificate file used to connect to endpoint")
 	p.StringFlag("tls-client-key", "", "path to private key file used to connect to endpoint")
@@ -54,7 +54,7 @@ func main() {
 
 	if version == "latest" {
 		latestVersionURL, _ := p.OptString("latest-version-url")
-		filterVersion, _ := p.OptString("version-filter")
+		filterVersion, _ := p.OptString("latest-version-filter")
 		version, err = fetchGoVersion(latestVersionURL, filterVersion)
 		if err != nil {
 			p.Fatal(errors.Wrap(err, "fetching latest go version"))
