@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -41,16 +42,54 @@ func TestExtractVersion(t *testing.T) {
 }
 
 func TestFetchGoVersion(t *testing.T) {
+	data := goDownloadInfo{
+		{
+			Version: "go1.11.3",
+			Stable:  true,
+		},
+		{
+			Version: "go1.10.3",
+			Stable:  true,
+		},
+	}
+
 	is := is.New(t)
 	hler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("go1.10.3"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
 	})
 
 	s := httptest.NewServer(hler)
 	defer s.Close()
 
-	version, err := fetchGoVersion(s.URL, "go1.10")
+	version, err := fetchGoVersions(s.URL)
 	is.NoErr(err)
-	is.Equal(version, "go1.10.3")
+	is.Equal(version, data)
+}
+
+func TestCheckVersion(t *testing.T) {
+	data := goDownloadInfo{
+		{
+			Version: "go1.11.3",
+			Stable:  true,
+		},
+		{
+			Version: "go1.10.3",
+			Stable:  true,
+		},
+	}
+
+	t.Run("normal case", func(t *testing.T) {
+		is := is.New(t)
+		result := checkVersion("go1.10.3", data)
+		is.Equal(result, true)
+	})
+
+	t.Run("not found case", func(t *testing.T) {
+		is := is.New(t)
+		result := checkVersion("go1.10.4", data)
+		is.Equal(result, false)
+	})
+
 }
