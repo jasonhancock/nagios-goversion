@@ -22,7 +22,7 @@ func main() {
 	p.StringFlag("endpoint", "", "The page to check for your application's Go version. The page must output JSON.")
 	p.StringFlag("endpoint-path", "", "The path to the JSON key containing your application's Go version specified in JavaScript notation")
 	p.StringFlag("version", "latest", "The expected version. If set to `latest`, the latest-version-url will be consulted")
-	p.StringFlag("latest-version-url", "https://golang.org/VERSION?m=text", "The url where one can retrieve the latest version of Go")
+	p.StringFlag("latest-version-url", "https://golang.org/dl/?mode=json", "The url where one can retrieve the latest version of Go")
 	p.StringFlag("tls-client-cert", "", "path to certificate file used to connect to endpoint")
 	p.StringFlag("tls-client-key", "", "path to private key file used to connect to endpoint")
 	p.StringFlag("tls-client-root-ca-file", "", "path to private certificate authority certificate used to connect to endpoint")
@@ -50,9 +50,10 @@ func main() {
 		p.Fatal(errors.Wrap(err, "extracting version from application page"))
 	}
 
+	var latestversions goDownloadInfo
 	if version == "latest" {
 		latestVersionURL, _ := p.OptString("latest-version-url")
-		version, err = fetchGoVersion(latestVersionURL)
+		latestversions, err = fetchGoVersions(latestVersionURL)
 		if err != nil {
 			p.Fatal(errors.Wrap(err, "fetching latest go version"))
 		}
@@ -60,12 +61,12 @@ func main() {
 
 	code := nagios.OK
 	label := "OK"
-	if appVersion != version {
-		code = nagios.CRITICAL
-		label = "CRITICAL"
+	if appVersion != version || checkVersion(appVersion, latestversions) {
+		code = nagios.WARNING
+		label = "WARNING"
 	}
 
-	p.Exit(code, fmt.Sprintf("%s - application_version=%q expected_version=%q", label, appVersion, version))
+	p.Exit(code, fmt.Sprintf("%s - application_version=%q expected_version=%q latest=%+v", label, appVersion, version, latestversions))
 }
 
 func buildTLSConfig(tlsClientCert, tlsClientKey, tlsClientRootCaFile string) (*tls.Config, error) {
@@ -97,29 +98,43 @@ func buildTLSConfig(tlsClientCert, tlsClientKey, tlsClientRootCaFile string) (*t
 	return tlsConfig, nil
 }
 
-func fetchGoVersion(url string) (string, error) {
+type goDownloadInfo []struct {
+	Version string `json:"version"`
+	Stable  bool   `json:"stable"`
+}
+
+func fetchGoVersions(url string) (goDownloadInfo, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "constructing request")
+		return nil, errors.Wrap(err, "constructing request")
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "executing request")
+		return nil, errors.Wrap(err, "executing request")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("non-200 response received")
+		return nil, errors.New("non-200 response received")
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "reading response body")
+	var results goDownloadInfo
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&results); decodeErr != nil {
+		return nil, decodeErr
 	}
 
-	return string(data), nil
+	return results, nil
+}
+
+func checkVersion(appVersion string, downloadInfo goDownloadInfo) bool {
+	for _, val := range downloadInfo {
+		if val.Version == appVersion && val.Stable {
+			return true
+		}
+	}
+	return false
 }
 
 func fetchPage(url string, tlsConfig *tls.Config) (map[string]interface{}, error) {
