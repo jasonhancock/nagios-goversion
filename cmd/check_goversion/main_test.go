@@ -50,7 +50,7 @@ func TestFetchGoVersion(t *testing.T) {
 	s := httptest.NewServer(hler)
 	defer s.Close()
 
-	version, err := fetchGoVersion(s.URL)
+	version, err := fetchGoVersion(s.URL, "go1.10")
 	is.NoErr(err)
 	is.Equal(version, "go1.10.3")
 }
