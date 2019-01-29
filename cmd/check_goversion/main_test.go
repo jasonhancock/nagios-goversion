@@ -67,29 +67,3 @@ func TestFetchGoVersion(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(version, data)
 }
-
-func TestCheckVersion(t *testing.T) {
-	data := goDownloadInfo{
-		{
-			Version: "go1.11.3",
-			Stable:  true,
-		},
-		{
-			Version: "go1.10.3",
-			Stable:  true,
-		},
-	}
-
-	t.Run("normal case", func(t *testing.T) {
-		is := is.New(t)
-		result := checkVersion("go1.10.3", data)
-		is.Equal(result, true)
-	})
-
-	t.Run("not found case", func(t *testing.T) {
-		is := is.New(t)
-		result := checkVersion("go1.10.4", data)
-		is.Equal(result, false)
-	})
-
-}

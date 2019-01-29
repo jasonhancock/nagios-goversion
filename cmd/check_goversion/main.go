@@ -142,15 +142,6 @@ func fetchGoVersions(url string) (goDownloadInfo, error) {
 	return results, nil
 }
 
-func checkVersion(appVersion string, downloadInfo goDownloadInfo) bool {
-	for _, val := range downloadInfo {
-		if val.Version == appVersion && val.Stable {
-			return true
-		}
-	}
-	return false
-}
-
 func fetchPage(url string, tlsConfig *tls.Config) (map[string]interface{}, error) {
 	client := &http.Client{}
 	if tlsConfig != nil {
