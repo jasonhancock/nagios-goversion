@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/jasonhancock/go-nagios"
 	"github.com/matryer/m"
@@ -50,23 +51,36 @@ func main() {
 		p.Fatal(errors.Wrap(err, "extracting version from application page"))
 	}
 
-	var latestversions goDownloadInfo
+	expected := make(map[string]struct{})
 	if version == "latest" {
 		latestVersionURL, _ := p.OptString("latest-version-url")
-		latestversions, err = fetchGoVersions(latestVersionURL)
+		resp, err := fetchGoVersions(latestVersionURL)
 		if err != nil {
 			p.Fatal(errors.Wrap(err, "fetching latest go version"))
 		}
+
+		for _, v := range resp {
+			if v.Stable {
+				expected[v.Version] = struct{}{}
+			}
+		}
+	} else {
+		expected[version] = struct{}{}
 	}
 
 	code := nagios.OK
 	label := "OK"
-	if appVersion != version || checkVersion(appVersion, latestversions) {
+	if _, ok := expected[appVersion]; !ok {
 		code = nagios.WARNING
 		label = "WARNING"
 	}
 
-	p.Exit(code, fmt.Sprintf("%s - application_version=%q expected_version=%q latest=%+v", label, appVersion, version, latestversions))
+	expectedKeys := make([]string, 0, len(expected))
+	for k := range expected {
+		expectedKeys = append(expectedKeys, k)
+	}
+
+	p.Exit(code, fmt.Sprintf("%s - application_version=%q expected_version=%q", label, appVersion, strings.Join(expectedKeys, ",")))
 }
 
 func buildTLSConfig(tlsClientCert, tlsClientKey, tlsClientRootCaFile string) (*tls.Config, error) {
